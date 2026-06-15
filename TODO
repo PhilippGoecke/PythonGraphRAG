@@ -1,0 +1,81 @@
+# GraphRAG Local Ollama Example
+
+This example demonstrates how to use GraphRAG with a local Ollama instance.
+
+## Prerequisites
+- Ollama installed and running locally
+- Python 3.10+
+- graphrag package installed
+
+## Setup
+
+1. Start Ollama:
+```bash
+ollama serve
+```
+
+2. Pull a model (e.g., llama2):
+```bash
+ollama pull llama2
+```
+
+3. Install GraphRAG:
+```bash
+pip install graphrag
+```
+
+## Example Code
+
+```python
+from graphrag.query.cli import run_query
+from graphrag.config import GraphRAGConfig
+
+# Configure for local Ollama
+config = GraphRAGConfig(
+    llm_model="ollama/llama2",
+    llm_api_base="http://localhost:11434",
+    embedding_model="ollama/nomic-embed-text",
+    embedding_api_base="http://localhost:11434",
+)
+
+# Initialize GraphRAG
+from graphrag.query.structured_search import run_structured_query
+
+# Example query
+query = "What is the main topic?"
+results = run_structured_query(
+    query=query,
+    config=config,
+    data_dir="./data",
+)
+
+print(results)
+```
+
+## Configuration
+
+Update your `.env` or config file:
+```
+LLM_MODEL=ollama/llama2
+LLM_API_BASE=http://localhost:11434
+EMBEDDING_MODEL=ollama/nomic-embed-text
+EMBEDDING_API_BASE=http://localhost:11434
+```
+
+## Running Queries
+
+```python
+from graphrag.query.entity_search import search_entities
+
+# Search for entities
+entities = search_entities(
+    query="company names",
+    top_k=10,
+    config=config
+)
+```
+
+## Notes
+- Ensure Ollama is running on the default port (11434)
+- Adjust model names based on available Ollama models
+- For production, consider using environment variables for configuration
