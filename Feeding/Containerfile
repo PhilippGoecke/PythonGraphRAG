@@ -1,0 +1,12 @@
+FROM localhost/python:base as indexing
+
+RUN pip install graphrag
+
+ENV LLM_MODEL=ollama/llama2
+ENV LLM_API_BASE=http://localhost:11434
+ENV EMBEDDING_MODEL=ollama/nomic-embed-text
+ENV EMBEDDING_API_BASE=http://localhost:11434
+
+COPY graphrag_indexing.py .
+
+CMD ["python", "graphrag_indexing.py"]
