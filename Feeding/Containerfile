@@ -1,4 +1,4 @@
-FROM localhost/python:base as indexing
+FROM localhost/graphragindexing:demo as indexing
 
 RUN pip install graphrag
 
