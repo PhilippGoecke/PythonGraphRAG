@@ -1,6 +1,6 @@
 FROM localhost/pythongraphrag:base as indexing
 
-RUN pip install graphrag
+RUN pip install --no-cache-dir graphrag
 
 ENV LLM_MODEL=ollama/llama2
 ENV LLM_API_BASE=http://host.containers.internal:11434
