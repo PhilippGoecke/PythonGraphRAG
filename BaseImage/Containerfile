@@ -1,0 +1,36 @@
+FROM debian:trixie-slim as base-image
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt update && apt upgrade -y \
+  # install tools
+  && apt install -y --no-install-recommends git curl ca-certificates \
+  # install python dependencies
+  && apt install -y --no-install-recommends make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev libsqlite3-dev \
+  # make image smaller
+  && rm -rf "/var/lib/apt/lists/*" \
+  && rm -rf /var/cache/apt/archives
+
+RUN useradd -m pythonuser
+
+ENV HOME /home/pythonuser
+WORKDIR $HOME
+USER pythonuser
+
+RUN git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+ENV PATH $HOME/.pyenv/shims:$HOME/.pyenv/bin:$PATH
+
+ENV PYTHON_VERSION 3.14.6
+RUN pyenv install --list | grep -A7 $PYTHON_VERSION \
+  && pyenv install $PYTHON_VERSION \
+  && pyenv global $PYTHON_VERSION \
+  && pyenv rehash \
+  && python --version
+
+WORKDIR $HOME/app
+
+RUN pip install --upgrade pip
+
+HEALTHCHECK --interval=60s --timeout=5s CMD sh -c 'python -c "import sys" >/dev/null 2>&1 || exit 1'
+
+CMD ["python", "--version"]
