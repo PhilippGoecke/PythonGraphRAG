@@ -22,6 +22,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Optional
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +39,7 @@ class GraphRAGIndexer:
         embedding_model: str = os.getenv("EMBEDDING_MODEL", "ollama/nomic-embed-text"),
         embedding_api_base: str = os.getenv("EMBEDDING_API_BASE", "http://localhost:11434"),
         data_dir: str = "./data",
+        graph_db_path: str = "./graph_db",
     ):
         """
         Initialize GraphRAG configuration for local Ollama.
@@ -48,18 +50,22 @@ class GraphRAGIndexer:
             embedding_model: Embedding model identifier
             embedding_api_base: Base URL for Ollama embedding API
             data_dir: Directory containing documents to index
+            graph_db_path: Path to graph database persistence directory
         """
         self.llm_model = llm_model
         self.llm_api_base = llm_api_base
         self.embedding_model = embedding_model
         self.embedding_api_base = embedding_api_base
         self.data_dir = Path(data_dir)
+        self.graph_db_path = Path(graph_db_path)
         
-        # Create data directory if it doesn't exist
+        # Create data and graph database directories if they don't exist
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.graph_db_path.mkdir(parents=True, exist_ok=True)
         
         self.config = self._create_config()
-        logger.info("GraphRAG indexer initialized with Ollama backend")
+        self.graph_store = self._init_graph_db()
+        logger.info("GraphRAG indexer initialized with Ollama backend and graph database persistence")
     
     def _create_config(self) -> dict:
         """Create GraphRAG configuration dictionary."""
@@ -69,7 +75,37 @@ class GraphRAGIndexer:
             "embedding_model": self.embedding_model,
             "embedding_api_base": self.embedding_api_base,
             "data_dir": str(self.data_dir),
+            "graph_db_path": str(self.graph_db_path),
         }
+    
+    def _init_graph_db(self) -> dict:
+        """Initialize or load graph database for persistence."""
+        db_file = self.graph_db_path / "graph_store.json"
+        
+        if db_file.exists():
+            try:
+                with open(db_file, 'r', encoding='utf-8') as f:
+                    graph_store = json.load(f)
+                logger.info("Loaded existing graph database")
+                return graph_store
+            except Exception as e:
+                logger.error(f"Error loading graph database: {e}")
+                return {"nodes": [], "edges": []}
+        else:
+            logger.info("Initializing new graph database")
+            return {"nodes": [], "edges": []}
+    
+    def _persist_graph_db(self) -> bool:
+        """Persist graph database to disk."""
+        try:
+            db_file = self.graph_db_path / "graph_store.json"
+            with open(db_file, 'w', encoding='utf-8') as f:
+                json.dump(self.graph_store, f, indent=2)
+            logger.info("Graph database persisted to disk")
+            return True
+        except Exception as e:
+            logger.error(f"Error persisting graph database: {e}")
+            return False
     
     def index_documents(self, documents: list[str]) -> bool:
         """
@@ -96,6 +132,11 @@ class GraphRAGIndexer:
                 documents=documents,
                 config=self.config,
             )
+            
+            # Store index in graph database
+            self.graph_store["index"] = str(index)
+            self.graph_store["document_count"] = len(documents)
+            self._persist_graph_db()
             
             logger.info("Indexing completed successfully")
             return True
@@ -173,13 +214,14 @@ class GraphRAGIndexer:
 def main():
     """Example usage of GraphRAG indexer with local Ollama."""
     
-    # Initialize indexer
+    # Initialize indexer with graph database persistence
     indexer = GraphRAGIndexer(
         llm_model=os.getenv("LLM_MODEL", "ollama/llama2"),
         llm_api_base=os.getenv("LLM_API_BASE", "http://localhost:11434"),
         embedding_model=os.getenv("EMBEDDING_MODEL", "ollama/nomic-embed-text"),
         embedding_api_base=os.getenv("EMBEDDING_API_BASE", "http://localhost:11434"),
         data_dir=os.getenv("DATA_DIR", "./data"),
+        graph_db_path=os.getenv("GRAPH_DB_PATH", "./graph_db"),
     )
     
     # Example 1: Index from sample documents
